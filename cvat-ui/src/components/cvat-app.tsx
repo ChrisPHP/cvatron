@@ -1,4 +1,4 @@
-// Copyright (C) 2020 Intel Corporation
+// Copyright (C) 2021 Intel Corporation
 //
 // SPDX-License-Identifier: MIT
 
@@ -21,6 +21,9 @@ import TasksPageContainer from 'containers/tasks-page/tasks-page';
 import LoginWithTokenComponent from 'components/login-with-token/login-with-token';
 import CreateTaskPageContainer from 'containers/create-task-page/create-task-page';
 import TaskPageContainer from 'containers/task-page/task-page';
+
+import DetectronPageContainer from 'containers/detectron-page/detectron-page';
+
 import ModelsPageContainer from 'containers/models-page/models-page';
 import AnnotationPageContainer from 'containers/annotation-page/annotation-page';
 import LoginPageContainer from 'containers/login-page/login-page';
@@ -309,6 +312,7 @@ class CVATApplication extends React.PureComponent<CVATAppProps & RouteComponentP
                                 <ShorcutsDialog />
                                 <GlobalHotKeys keyMap={subKeyMap} handlers={handlers}>
                                     <Switch>
+                                        <Route exact path='/detectron' component={DetectronPageContainer} />
                                         <Route exact path='/projects' component={ProjectsPageComponent} />
                                         <Route exact path='/projects/create' component={CreateProjectPageComponent} />
                                         <Route exact path='/projects/:id' component={ProjectPageComponent} />
