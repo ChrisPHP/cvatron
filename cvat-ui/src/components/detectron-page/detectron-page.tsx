@@ -3,87 +3,179 @@
 // SPDX-License-Identifier: MIT
 import React from 'react';
 import './styles.scss';
+import { withRouter } from 'react-router-dom';
 
-import Menu from 'antd/lib/menu';
 import Input from 'antd/lib/input';
-import Checkbox from 'antd/lib/checkbox';
 
 import { Row } from 'antd/lib/grid';
-import { Upload, Form, Button } from 'antd';
+import {
+    Upload, Form, Button, Divider, Select,
+} from 'antd';
 
-const { SubMenu } = Menu;
+const { Option } = Select;
 
-export default function DetectronPageComponent(): JSX.Element {
-    return (
-        <Row justify='center' align='top'>
-            <Row justify='space-between' align='middle'>
-                <Form name='basic'>
-                    <Form.Item name='project' rules={[{ required: true, message: 'Please choose a project!' }]}>
-                        <Menu style={{ width: 256 }} defaultSelectedKeys={['1']} mode='inline'>
-                            <SubMenu key='proj1' title='Choose a Project'>
-                                <Menu.Item key='1'>Option 1</Menu.Item>
-                                <Menu.Item key='2'>Option 2</Menu.Item>
-                            </SubMenu>
-                        </Menu>
-                    </Form.Item>
-                    <Form.Item name='username' rules={[{ required: true, message: 'Please input your username!' }]}>
-                        <Menu style={{ width: 256 }} defaultSelectedKeys={['1']} mode='inline'>
-                            <SubMenu key='sub1' title='COCO Dataset'>
-                                <SubMenu key='sub1-2' title='Faster R-CNN'>
-                                    <Menu.Item key='1'>Option 1</Menu.Item>
-                                    <Menu.Item key='2'>Option 1</Menu.Item>
-                                </SubMenu>
-                                <SubMenu key='sub1-3' title='RetinaNet'>
-                                    <Menu.Item key='3'>Option 1</Menu.Item>
-                                    <Menu.Item key='4'>Option 1</Menu.Item>
-                                </SubMenu>
-                                <SubMenu key='sub1-4' title='RPN & Fast R-CNN'>
-                                    <Menu.Item key='5'>Option 1</Menu.Item>
-                                    <Menu.Item key='6'>Option 1</Menu.Item>
-                                </SubMenu>
-                            </SubMenu>
-                        </Menu>
-                    </Form.Item>
+class TaskPageComponent extends React.PureComponent<Props> {
+    onFinishTrain = (values: any) => {
+        console.log('Success', values);
 
-                    <Form.Item name='iterations' rules={[{ required: true, message: 'Please input your username!' }]}>
-                        <Input placeholder='iterations' />
-                    </Form.Item>
+        fetch('http://localhost:4000/Train', {
+            method: 'POST',
+            body: JSON.stringify(values),
+        }).then((response) => {
+            console.log('test', response);
+            alert('finished train');
+            return response.json();
+        });
+    };
 
-                    <Form.Item name='batch' rules={[{ required: true, message: 'Please input your username!' }]}>
-                        <Input placeholder='Batch Size' />
-                    </Form.Item>
+    onFinishTest = (values: any) => {
+        console.log('Success', values);
 
-                    <Form.Item name='resume'>
-                        <Checkbox>Resume train</Checkbox>
-                    </Form.Item>
+        fetch('http://localhost:4000/Test', {
+            method: 'POST',
+            body: JSON.stringify(values),
+        }).then((response) => {
+            console.log(response);
+            alert('Finished Tests');
+            return response.json();
+        });
+    };
 
-                    <Form.Item name='submit'>
-                        <Button type='primary' htmlType='submit'>
-                            Train
-                        </Button>
-                    </Form.Item>
-                </Form>
-            </Row>
-            <Row justify='space-between' align='middle'>
-                <Form name='basic'>
-                    <Form.Item name='test-images'>
-                        <Upload>
-                            <Button>Upload Test Images</Button>
-                        </Upload>
-                    </Form.Item>
-                    <Form.Item name='threshold'>
-                        <Input placeholder='threshold' />
-                    </Form.Item>
-                    <Form.Item name='output'>
-                        <Input placeholder='output dir' />
-                    </Form.Item>
-                    <Form.Item name='submit'>
-                        <Button type='primary' htmlType='submit'>
-                            Test
-                        </Button>
-                    </Form.Item>
-                </Form>
-            </Row>
-        </Row>
-    );
+    public render(): JSX.Element {
+        return (
+            <>
+                <Row justify='center' align='top'>
+                    <Row className='train-test' justify='space-between' align='middle'>
+                        <Divider>Training</Divider>
+                        <Form onFinish={this.onFinishTrain}>
+                            <Form.Item name='Task'>
+                                <Select placeholder='Select a Task'>
+                                    <Option value='task1'>A task</Option>
+                                </Select>
+                            </Form.Item>
+                            <Form.Item name='task_images'>
+                                <Upload>
+                                    <Button>Upload Task Images</Button>
+                                </Upload>
+                            </Form.Item>
+                            <Form.Item name='task_annotated'>
+                                <Upload>
+                                    <Button>Upload annotated images</Button>
+                                </Upload>
+                            </Form.Item>
+                            <Form.Item name='Dataset'>
+                                <Select placeholder='Select a Dataset'>
+                                    <Option value='COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml'>
+                                        Mask RCNN 101 FPN
+                                    </Option>
+                                </Select>
+                            </Form.Item>
+
+                            <Form.Item
+                                label='Number of Workers'
+                                name='Workers'
+                                rules={[{ required: true, message: 'Please input your username!' }]}
+                            >
+                                <Input />
+                            </Form.Item>
+
+                            <Form.Item
+                                label='IMS per batch'
+                                name='Ims'
+                                rules={[{ required: true, message: 'Please input your username!' }]}
+                            >
+                                <Input />
+                            </Form.Item>
+
+                            <Form.Item
+                                label='Learning Rate'
+                                name='LearnRate'
+                                rules={[{ required: true, message: 'Please input your username!' }]}
+                            >
+                                <Input />
+                            </Form.Item>
+
+                            <Form.Item
+                                label='Iterations'
+                                name='Iterations'
+                                rules={[{ required: true, message: 'Please input your username!' }]}
+                            >
+                                <Input />
+                            </Form.Item>
+
+                            <Form.Item
+                                label='Batch size'
+                                name='BatchSize'
+                                rules={[{ required: true, message: 'Please input your username!' }]}
+                            >
+                                <Input />
+                            </Form.Item>
+
+                            <Form.Item
+                                label='Number of classifiers'
+                                name='NumClassifiers'
+                                rules={[{ required: true, message: 'Please input your username!' }]}
+                            >
+                                <Input />
+                            </Form.Item>
+
+                            <Form.Item name='ResumeTrain'>
+                                <Select placeholder='Resume Train'>
+                                    <Option value='True'>True</Option>
+                                    <Option value='False'>False</Option>
+                                </Select>
+                            </Form.Item>
+
+                            <Form.Item name='submit'>
+                                <Button type='primary' htmlType='submit'>
+                                    Train
+                                </Button>
+                            </Form.Item>
+                        </Form>
+                    </Row>
+
+                    <Row className='train-test' justify='space-between' align='middle'>
+                        <Divider>Testing</Divider>
+                        <Form onFinish={this.onFinishTest}>
+                            <Form.Item name='Task'>
+                                <Select placeholder='Select a Task'>
+                                    <Option value='task1'>A task</Option>
+                                </Select>
+                            </Form.Item>
+                            <Form.Item name='task_images'>
+                                <Upload>
+                                    <Button>Upload Task Images</Button>
+                                </Upload>
+                            </Form.Item>
+                            <Form.Item name='task_annotated'>
+                                <Upload>
+                                    <Button>Upload annotated images</Button>
+                                </Upload>
+                            </Form.Item>
+                            <Form.Item name='Dataset'>
+                                <Select placeholder='Select a Dataset'>
+                                    <Option value='COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml'>
+                                        Mask RCNN R 101 FPN
+                                    </Option>
+                                </Select>
+                            </Form.Item>
+                            <Form.Item label='Threshold' name='Threshold'>
+                                <Input />
+                            </Form.Item>
+                            <Form.Item label='Output Directory' name='Output'>
+                                <Input />
+                            </Form.Item>
+                            <Form.Item name='submit'>
+                                <Button type='primary' htmlType='submit'>
+                                    Test
+                                </Button>
+                            </Form.Item>
+                        </Form>
+                    </Row>
+                </Row>
+            </>
+        );
+    }
 }
+
+export default withRouter(TaskPageComponent);
