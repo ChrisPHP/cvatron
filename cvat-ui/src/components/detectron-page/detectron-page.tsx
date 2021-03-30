@@ -6,6 +6,7 @@ import './styles.scss';
 import { withRouter } from 'react-router-dom';
 
 import Input from 'antd/lib/input';
+import DetectronOptionsContainer from 'containers/detectron-page/detectron-options';
 
 import { Row } from 'antd/lib/grid';
 import {
@@ -101,9 +102,7 @@ class TaskPageComponent extends React.PureComponent<Props> {
 
                         <Form id='TrainForm' onFinish={this.onFinishTrain}>
                             <Form.Item name='Task'>
-                                <Select placeholder='Select a Task'>
-                                    <Option value='task1'>A task</Option>
-                                </Select>
+                                <DetectronOptionsContainer />
                             </Form.Item>
                             <Form.Item name='Dataset'>
                                 <Select placeholder='Select a Dataset'>

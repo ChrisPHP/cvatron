@@ -2,18 +2,24 @@
 //
 // SPDX-License-Identifier: MIT
 import React from 'react';
+import { Select } from 'antd';
 
 export interface OptionsListProps {
     currentTasksIndexes: number[];
     numberOfTasks: number;
+    TaskName: string[];
 }
 
+const { Option } = Select;
+
 export default function DetectronOptionsComponent(props: OptionsListProps) {
-    const { currentTasksIndexes } = props;
+    const { currentTasksIndexes, TaskName } = props;
 
     return (
         <>
-            <p>{currentTasksIndexes}</p>
+            <Select placeholder='Select a Task'>
+                <Option value={currentTasksIndexes}>{TaskName}</Option>
+            </Select>
         </>
     );
 }

@@ -44,6 +44,7 @@ function DetectronOptionsContainer(props: DetectronOptionsContainerProps): JSX.E
     return (
         <DetectronOptions
             currentTasksIndexes={tasks.current.map((task): number => task.instance.id)}
+            TaskName={tasks.current.map((task): string => task.instance.name)}
             numberOfTasks={tasks.count}
         />
     );

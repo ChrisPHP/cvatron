@@ -7,6 +7,8 @@ import (
   "os"
   "os/exec"
   "encoding/json"
+  "io/ioutil"
+  "mime/multipart"
 
   "github.com/gorilla/mux"
 )
@@ -40,6 +42,7 @@ func setupRoutes() {
   router.HandleFunc("/Api", Index)
   router.HandleFunc("/Train", WriteTrain)
   router.HandleFunc("/Test", WriteTest)
+  router.HandleFunc("/upload", UploadImages)
   log.Fatal(http.ListenAndServe(":4000", router))
 }
 
@@ -206,6 +209,47 @@ func WriteTrain(w http.ResponseWriter, r *http.Request) {
 
   TrainHandler(w, r)
 }
+
+func UploadImages(w http.ResponseWriter, r *http.Request) {
+  fmt.Println("recieved")
+
+  err := r.ParseMultipartForm(32 << 20)
+  if err != nil {
+    fmt.Println(err)
+  }
+
+  files := r.MultipartForm.File["file"]
+
+  for _, handler := range files {
+    file, err := handler.Open()
+    defer file.Close()
+    if err != nil {
+      fmt.Println(err)
+      return
+    }
+    SaveFile(w, file, handler, r)
+  }
+
+  return
+}
+
+func SaveFile(w http.ResponseWriter, file multipart.File, handler *multipart.FileHeader, r *http.Request) {
+  data, err := ioutil.ReadAll(file)
+  if err != nil {
+    fmt.Println(err)
+    return
+  }
+
+  err = ioutil.WriteFile("detectron/" + r.FormValue("name") + "/images/"+handler.Filename, data, 0666)
+  if err != nil {
+    fmt.Println(w, "%v", err)
+    return
+  }
+
+  w.Write([]byte("Images Successfully Uploaded"))
+  return
+}
+
 
 func save() {
   cmd := exec.Command("detect.sh")
