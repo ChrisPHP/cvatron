@@ -13,12 +13,18 @@ export interface OptionsListProps {
 const { Option } = Select;
 
 export default function DetectronOptionsComponent(props: OptionsListProps) {
-    const { currentTasksIndexes, TaskName } = props;
+    const { currentTasksIndexes, TaskName, numberOfTasks } = props;
+
+    const NoTasks = `Select a Task: ${numberOfTasks} Available Tasks`;
 
     return (
         <>
-            <Select placeholder='Select a Task'>
-                <Option value={currentTasksIndexes}>{TaskName}</Option>
+            <Select placeholder={NoTasks}>
+                {currentTasksIndexes.map((id, index) => (
+                    <Option key={index} value={id}>
+                        {TaskName[index]}
+                    </Option>
+                ))}
             </Select>
         </>
     );

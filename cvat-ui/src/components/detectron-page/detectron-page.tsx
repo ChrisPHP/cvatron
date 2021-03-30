@@ -177,9 +177,7 @@ class TaskPageComponent extends React.PureComponent<Props> {
 
                         <Form onFinish={this.onFinishTest}>
                             <Form.Item name='Task'>
-                                <Select placeholder='Select a Task'>
-                                    <Option value='task1'>A task</Option>
-                                </Select>
+                                <DetectronOptionsContainer />
                             </Form.Item>
                             <Form.Item name='Dataset'>
                                 <Select placeholder='Select a Dataset'>
