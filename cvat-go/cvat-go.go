@@ -8,6 +8,8 @@ import (
   "os/exec"
   "encoding/json"
   "io/ioutil"
+  "io"
+  "path/filepath"
   "mime/multipart"
 
   "github.com/gorilla/mux"
@@ -116,6 +118,53 @@ func TestHandler(w http.ResponseWriter, r *http.Request) {
   return
 }
 
+func GetTaskImages(w http.ResponseWriter, r *http.Request) (Config) {
+  var c Config
+
+  err := json.NewDecoder(r.Body).Decode(&c)
+  if err != nil {
+    fmt.Println(err)
+  }
+
+  var Names []string
+  var files []string
+
+  root := "../data/data/" + c.Task + "/raw"
+  err  = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+    if (filepath.Ext(info.Name()) == ".png") {
+      files = append(files, path)
+      Names = append(Names, info.Name())
+    }
+    return nil
+  })
+  if err != nil {
+    panic(err)
+  }
+  for i, file := range files {
+    CopyFileOver(file, Names[i])
+  }
+  return c
+}
+
+func CopyFileOver(file string, Name string) {
+    sourceFile, err := os.Open(file)
+    if err != nil {
+      fmt.Println(err)
+    }
+    defer sourceFile.Close()
+
+    newFile, err := os.Create("detectron/train/images/" + Name)
+    if err != nil {
+      fmt.Println(err)
+    }
+    defer newFile.Close()
+
+    _, err = io.Copy(newFile, sourceFile)
+    if err != nil {
+      fmt.Println(err)
+    }
+}
+
 func WriteTest(w http.ResponseWriter, r *http.Request) {
   var T Tconfig
 
@@ -159,13 +208,7 @@ func WriteTest(w http.ResponseWriter, r *http.Request) {
 }
 
 func WriteTrain(w http.ResponseWriter, r *http.Request) {
-  var c Config
-
-  err := json.NewDecoder(r.Body).Decode(&c)
-
-  if err != nil {
-    fmt.Println(err)
-  }
+  c := GetTaskImages(w, r)
 
   f, err := os.Create("detectron/vgw_all_train.py")
 

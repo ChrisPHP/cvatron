@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 import React from 'react';
-import { Select } from 'antd';
+import { Select, Form } from 'antd';
 
 export interface OptionsListProps {
     currentTasksIndexes: number[];
@@ -19,13 +19,15 @@ export default function DetectronOptionsComponent(props: OptionsListProps) {
 
     return (
         <>
-            <Select placeholder={NoTasks}>
-                {currentTasksIndexes.map((id, index) => (
-                    <Option key={index} value={id}>
-                        {TaskName[index]}
-                    </Option>
-                ))}
-            </Select>
+            <Form.Item name='Task'>
+                <Select placeholder={NoTasks}>
+                    {currentTasksIndexes.map((id, index) => (
+                        <Option key={index} value={id.toString()}>
+                            {TaskName[index]}
+                        </Option>
+                    ))}
+                </Select>
+            </Form.Item>
         </>
     );
 }

@@ -101,9 +101,7 @@ class TaskPageComponent extends React.PureComponent<Props> {
                         <Divider>Training</Divider>
 
                         <Form id='TrainForm' onFinish={this.onFinishTrain}>
-                            <Form.Item name='Task'>
-                                <DetectronOptionsContainer />
-                            </Form.Item>
+                            <DetectronOptionsContainer />
                             <Form.Item name='Dataset'>
                                 <Select placeholder='Select a Dataset'>
                                     <Option value='COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml'>
@@ -166,7 +164,7 @@ class TaskPageComponent extends React.PureComponent<Props> {
                                     <Option value='False'>False</Option>
                                 </Select>
                             </Form.Item>
-                            <Button type='primary' htmlType='submit' onClick={() => this.SubmitForms()}>
+                            <Button type='primary' htmlType='submit'>
                                 Train
                             </Button>
                         </Form>
