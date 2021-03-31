@@ -20,6 +20,7 @@ type Install struct {
 }
 
 type Tconfig struct {
+  Task string
   Predictor string
   Output string
   Threshold string
@@ -36,6 +37,9 @@ type Config struct {
   NumClassifiers string
   ModelWeights string
   ResumeTrain string
+  Predictor string
+  Output string
+  Threshold string
 }
 
 func setupRoutes() {
@@ -118,7 +122,7 @@ func TestHandler(w http.ResponseWriter, r *http.Request) {
   return
 }
 
-func GetTaskImages(w http.ResponseWriter, r *http.Request) (Config) {
+func GetTaskImages(w http.ResponseWriter, r *http.Request, FormName string) (Config) {
   var c Config
 
   err := json.NewDecoder(r.Body).Decode(&c)
@@ -141,19 +145,19 @@ func GetTaskImages(w http.ResponseWriter, r *http.Request) (Config) {
     panic(err)
   }
   for i, file := range files {
-    CopyFileOver(file, Names[i])
+    CopyFileOver(file, Names[i], FormName)
   }
   return c
 }
 
-func CopyFileOver(file string, Name string) {
+func CopyFileOver(file string, Name string, FormName string) {
     sourceFile, err := os.Open(file)
     if err != nil {
       fmt.Println(err)
     }
     defer sourceFile.Close()
 
-    newFile, err := os.Create("detectron/train/images/" + Name)
+    newFile, err := os.Create("detectron/" + FormName + "/images/" + Name)
     if err != nil {
       fmt.Println(err)
     }
@@ -166,16 +170,10 @@ func CopyFileOver(file string, Name string) {
 }
 
 func WriteTest(w http.ResponseWriter, r *http.Request) {
-  var T Tconfig
-
-  err := json.NewDecoder(r.Body).Decode(&T)
-
-  if err != nil {
-    fmt.Println(err)
-  }
+  T := GetTaskImages(w, r, "test")
 
   dir := "output/" + T.Output
-  err = os.Mkdir(dir, 0755 )
+  err := os.Mkdir(dir, 0755 )
 
   if err != nil {
     fmt.Println(err)
@@ -208,7 +206,7 @@ func WriteTest(w http.ResponseWriter, r *http.Request) {
 }
 
 func WriteTrain(w http.ResponseWriter, r *http.Request) {
-  c := GetTaskImages(w, r)
+  c := GetTaskImages(w, r, "train")
 
   f, err := os.Create("detectron/vgw_all_train.py")
 
