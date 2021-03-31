@@ -138,11 +138,10 @@ class Data(models.Model):
     def get_preview_path(self):
         return os.path.join(self.get_data_dirname(), 'preview.jpeg')
 
-    def get_meta_path(self):
-        return os.path.join(self.get_upload_dirname(), 'meta_info.txt')
-
-    def get_dummy_chunk_path(self, chunk_number):
-        return os.path.join(self.get_upload_dirname(), 'dummy_{}.txt'.format(chunk_number))
+    def get_manifest_path(self):
+        return os.path.join(self.get_upload_dirname(), 'manifest.jsonl')
+    def get_index_path(self):
+        return os.path.join(self.get_upload_dirname(), 'index.json')
 
 class Video(models.Model):
     data = models.OneToOneField(Data, on_delete=models.CASCADE, related_name="video", null=True)
@@ -214,6 +213,7 @@ class Task(models.Model):
         default=StatusChoice.ANNOTATION)
     data = models.ForeignKey(Data, on_delete=models.CASCADE, null=True, related_name="tasks")
     dimension = models.CharField(max_length=2, choices=DimensionType.choices(), default=DimensionType.DIM_2D)
+    subset = models.CharField(max_length=64, blank=True, default="")
 
     # Extend default permission model
     class Meta:
