@@ -7,6 +7,10 @@ import (
   "os"
   "os/exec"
   "encoding/json"
+  "io/ioutil"
+  "io"
+  "path/filepath"
+  "mime/multipart"
 
   "github.com/gorilla/mux"
 )
@@ -16,6 +20,7 @@ type Install struct {
 }
 
 type Tconfig struct {
+  Task string
   Predictor string
   Output string
   Threshold string
@@ -32,6 +37,9 @@ type Config struct {
   NumClassifiers string
   ModelWeights string
   ResumeTrain string
+  Predictor string
+  Output string
+  Threshold string
 }
 
 func setupRoutes() {
@@ -40,6 +48,7 @@ func setupRoutes() {
   router.HandleFunc("/Api", Index)
   router.HandleFunc("/Train", WriteTrain)
   router.HandleFunc("/Test", WriteTest)
+  router.HandleFunc("/upload", UploadImages)
   log.Fatal(http.ListenAndServe(":4000", router))
 }
 
@@ -113,17 +122,58 @@ func TestHandler(w http.ResponseWriter, r *http.Request) {
   return
 }
 
-func WriteTest(w http.ResponseWriter, r *http.Request) {
-  var T Tconfig
+func GetTaskImages(w http.ResponseWriter, r *http.Request, FormName string) (Config) {
+  var c Config
 
-  err := json.NewDecoder(r.Body).Decode(&T)
-
+  err := json.NewDecoder(r.Body).Decode(&c)
   if err != nil {
     fmt.Println(err)
   }
 
+  var Names []string
+  var files []string
+
+  root := "../data/data/" + c.Task + "/raw"
+  err  = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+    if (filepath.Ext(info.Name()) == ".png") {
+      files = append(files, path)
+      Names = append(Names, info.Name())
+    }
+    return nil
+  })
+  if err != nil {
+    panic(err)
+  }
+  for i, file := range files {
+    CopyFileOver(file, Names[i], FormName)
+  }
+  return c
+}
+
+func CopyFileOver(file string, Name string, FormName string) {
+    sourceFile, err := os.Open(file)
+    if err != nil {
+      fmt.Println(err)
+    }
+    defer sourceFile.Close()
+
+    newFile, err := os.Create("detectron/" + FormName + "/images/" + Name)
+    if err != nil {
+      fmt.Println(err)
+    }
+    defer newFile.Close()
+
+    _, err = io.Copy(newFile, sourceFile)
+    if err != nil {
+      fmt.Println(err)
+    }
+}
+
+func WriteTest(w http.ResponseWriter, r *http.Request) {
+  T := GetTaskImages(w, r, "test")
+
   dir := "output/" + T.Output
-  err = os.Mkdir(dir, 0755 )
+  err := os.Mkdir(dir, 0755 )
 
   if err != nil {
     fmt.Println(err)
@@ -156,13 +206,7 @@ func WriteTest(w http.ResponseWriter, r *http.Request) {
 }
 
 func WriteTrain(w http.ResponseWriter, r *http.Request) {
-  var c Config
-
-  err := json.NewDecoder(r.Body).Decode(&c)
-
-  if err != nil {
-    fmt.Println(err)
-  }
+  c := GetTaskImages(w, r, "train")
 
   f, err := os.Create("detectron/vgw_all_train.py")
 
@@ -206,6 +250,47 @@ func WriteTrain(w http.ResponseWriter, r *http.Request) {
 
   TrainHandler(w, r)
 }
+
+func UploadImages(w http.ResponseWriter, r *http.Request) {
+  fmt.Println("recieved")
+
+  err := r.ParseMultipartForm(32 << 20)
+  if err != nil {
+    fmt.Println(err)
+  }
+
+  files := r.MultipartForm.File["file"]
+
+  for _, handler := range files {
+    file, err := handler.Open()
+    defer file.Close()
+    if err != nil {
+      fmt.Println(err)
+      return
+    }
+    SaveFile(w, file, handler, r)
+  }
+
+  return
+}
+
+func SaveFile(w http.ResponseWriter, file multipart.File, handler *multipart.FileHeader, r *http.Request) {
+  data, err := ioutil.ReadAll(file)
+  if err != nil {
+    fmt.Println(err)
+    return
+  }
+
+  err = ioutil.WriteFile("detectron/" + r.FormValue("name") + "/images/"+handler.Filename, data, 0666)
+  if err != nil {
+    fmt.Println(w, "%v", err)
+    return
+  }
+
+  w.Write([]byte("Images Successfully Uploaded"))
+  return
+}
+
 
 func save() {
   cmd := exec.Command("detect.sh")
