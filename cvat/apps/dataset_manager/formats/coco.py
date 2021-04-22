@@ -20,7 +20,7 @@ def _export(dst_file, task_data, save_images=False):
         task_data, include_images=save_images), env=dm_env)
     with TemporaryDirectory() as temp_dir:
         dataset.export(temp_dir, 'coco_instances', save_images=save_images)
-
+        dataset.export("cvat-go/detectron/train/annotations", 'coco_instances', save_images=save_images)
         make_zip_archive(temp_dir, dst_file)
 
 @importer(name='COCO', ext='JSON, ZIP', version='1.0')

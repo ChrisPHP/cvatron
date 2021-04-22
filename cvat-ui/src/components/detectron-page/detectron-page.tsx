@@ -10,7 +10,7 @@ import DetectronOptionsContainer from 'containers/detectron-page/detectron-optio
 
 import { Row } from 'antd/lib/grid';
 import {
-    Form, Button, Divider, Select,
+    Form, Button, Divider, Select, Card,
 } from 'antd';
 
 const { Option } = Select;
@@ -49,7 +49,19 @@ function updateQuery(previousQuery: TasksQuery, searchString: string): TasksQuer
     return query;
 }
 
+function NewLineText(props) {
+  const text = props.text;
+  let newText = text.split('/n').map((item, i) => {
+    return <p key={i}>{item}</p>;
+  });
+  return newText
+}
+
 class TaskPageComponent extends React.PureComponent<Props> {
+  state = {
+    console: ''
+  }
+
     public componentDidMount(): void {
         const { gettingQuery, location, onGetTasks } = this.props;
         const query = updateQuery(gettingQuery, location.search);
@@ -67,16 +79,36 @@ class TaskPageComponent extends React.PureComponent<Props> {
         }
     }
 
+    onApiTest = () => {
+      console.log("test")
+      fetch('http://localhost:4000/Api')
+        .then(response => response.json())
+        .then(data =>{
+        this.setState({
+          console: this.state.console + "\n" + data.Name,
+        })
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+    };
+
     onFinishTrain = (values: any) => {
         console.log('Success', values);
 
         fetch('http://localhost:4000/Train', {
-            mode: 'no-cors',
             method: 'POST',
             body: JSON.stringify(values),
-        }).then((response) => {
-            console.log('test', response);
-            return response.json();
+        })
+        .then(response => response.json())
+        .then(data =>{
+          console.log(data)
+          this.setState({
+            console: this.state.console + "/n" + data.Err + "/n" + data.Out,
+          })
+        })
+        .catch((error) => {
+          console.error(error);
         });
     };
 
@@ -97,9 +129,11 @@ class TaskPageComponent extends React.PureComponent<Props> {
         return (
             <>
                 <Row justify='center' align='top'>
+                        <Card title="Console Output" style={{ width: 500, height: 500 }}>
+                          <NewLineText text={this.state.console} />
+                        </Card>
                     <Row className='train-test' justify='space-between' align='middle'>
                         <Divider>Training</Divider>
-
                         <Form id='TrainForm' onFinish={this.onFinishTrain}>
                             <DetectronOptionsContainer />
                             <Form.Item name='Dataset'>

@@ -14,6 +14,10 @@ import (
 
   "github.com/gorilla/mux"
 )
+type Res struct {
+  Out string
+  Err string
+}
 
 type Install struct {
   Result string
@@ -45,7 +49,7 @@ type Config struct {
 func setupRoutes() {
   router := mux.NewRouter().StrictSlash(true)
   router.HandleFunc("/", Index)
-  router.HandleFunc("/Api", Index)
+  router.HandleFunc("/Api", ReponseTest)
   router.HandleFunc("/Train", WriteTrain)
   router.HandleFunc("/Test", WriteTest)
   router.HandleFunc("/upload", UploadImages)
@@ -55,6 +59,18 @@ func setupRoutes() {
 func main() {
   setupRoutes()
   fmt.Println("Ready To Serve")
+}
+
+func ReponseTest(w http.ResponseWriter, r *http.Request) {
+  res := Res{"Monke", "test"}
+
+  js, err := json.Marshal(res)
+  if err != nil {
+    fmt.Println(err)
+  }
+
+  w.Header().Set("Content-Type", "application/json")
+  w.Write(js)
 }
 
 func Index(w http.ResponseWriter, r *http.Request) {
@@ -86,22 +102,57 @@ func Index(w http.ResponseWriter, r *http.Request) {
   fmt.Println(string(byteArray))
 }
 
-func TrainHandler(w http.ResponseWriter, r *http.Request) {
-  cmd := exec.Command("python", "detectron/vgw_all_train.py")
-  cmd.Stdout = os.Stdout
-  cmd.Stderr = os.Stderr
-  fmt.Println(cmd.Run())
+func LogFile(wr error) {
+  f, err := os.OpenFile("log.txt", os.O_RDWR | os.O_CREATE, 0666)
+  if err != nil {
+    log.Fatal("error opening file", err)
+  }
+  defer f.Close()
 
-  fin := Install{Result: "finished"}
+  log.SetOutput(f)
+  log.Println(wr)
+}
+
+func ReadFile() (out string) {
+  content, err := ioutil.ReadFile("log.txt")
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  return string(content)
+}
+
+func TrainHandler(w http.ResponseWriter, r *http.Request) {
+
+  cmd := exec.Command("python", "detectron/vgw_all_train.py")
+  out, err := cmd.Output()
+  fmt.Println(string(out))
+  if err != nil {
+    fmt.Println(err)
+    LogFile(err)
+
+    fin := Res{Err: ReadFile(), Out: string(out)}
+    byteArray, err := json.Marshal(fin)
+    if err != nil {
+      fmt.Println(err)
+    }
+    w.Write(byteArray)
+    return
+  }
+  //cmd.Stdout = os.Stdout
+  //cmd.Stderr = os.Stderr
+  //fmt.Println(cmd.Run())
+  //var a [2]string
+  //x := cmd.Run()
+  //fmt.Println(x.Error())
+  //ConsoleChecker(w, r, x)
+
+  fin := Res{Out: string(out)}
   byteArray, err := json.Marshal(fin)
   if err != nil {
     fmt.Println(err)
   }
-
-  fmt.Println(string(byteArray))
-  json.NewEncoder(w).Encode(fin)
-
-  return
+  w.Write(byteArray)
 }
 
 func TestHandler(w http.ResponseWriter, r *http.Request) {
@@ -206,19 +257,27 @@ func WriteTest(w http.ResponseWriter, r *http.Request) {
 }
 
 func WriteTrain(w http.ResponseWriter, r *http.Request) {
+  w.Header().Set("Content-Type", "application/json")
+
   c := GetTaskImages(w, r, "train")
 
   f, err := os.Create("detectron/vgw_all_train.py")
 
   if err != nil {
     log.Fatal(err)
+    fin := Res{Out: "Unable to create python file for training"}
+    byteArray, err := json.Marshal(fin)
+    if err != nil {
+      fmt.Println(err)
+    }
+    w.Write(byteArray)
   }
 
   defer f.Close()
 
   imps := "import os\nfrom detectron2.data.datasets import register_coco_instances\nfrom detectron2.engine        import DefaultTrainer\nfrom detectron2.config         import get_cfg\nfrom detectron2               import model_zoo\n\n"
 
-  reg := `register_coco_instances("vgw_cos_train", {}, "detectron/train/annotations/all_in_one.json", "detectron/train/images/")` + "\n"
+  reg := `register_coco_instances("vgw_cos_train", {}, "detectron/train/annotations/annotations/instances_default.json", "detectron/train/images/")` + "\n"
   reg += `register_coco_instances("vgw_all_test", {}, "detectron/test/annotations/alltest200/output.json", "detectron/test/images_200/")` + "\n\n"
 
   cfg := `cfg = get_cfg()` + "\n"
@@ -246,6 +305,12 @@ func WriteTrain(w http.ResponseWriter, r *http.Request) {
 
   if err2 != nil {
     log.Fatal(err2)
+    fin := Res{Out: "Unable to write to python file for training"}
+    byteArray, err := json.Marshal(fin)
+    if err != nil {
+      fmt.Println(err)
+    }
+    w.Write(byteArray)
   }
 
   TrainHandler(w, r)
