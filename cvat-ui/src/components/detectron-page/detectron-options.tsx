@@ -19,7 +19,10 @@ export default function DetectronOptionsComponent(props: OptionsListProps) {
 
     return (
         <>
-            <Form.Item name='Task'>
+            <Form.Item
+            name='Task'
+            label='Tasks'
+            >
                 <Select placeholder={NoTasks}>
                     {currentTasksIndexes.map((id, index) => (
                         <Option key={index} value={id.toString()}>

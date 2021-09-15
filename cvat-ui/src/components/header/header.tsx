@@ -319,6 +319,18 @@ function HeaderContainer(props: Props): JSX.Element {
                 >
                     Detectron
                 </Button>
+                <Button
+                    className='cvat-header-button'
+                    type='link'
+                    value='kmeans'
+                    href='/kmeans'
+                    onClick={(event: React.MouseEvent): void => {
+                      event.preventDefault();
+                      history.push('/kmeans');
+                    }}
+                >
+                  Kmeans
+                </Button>
             </div>
             <div className='cvat-right-header'>
                 <Button

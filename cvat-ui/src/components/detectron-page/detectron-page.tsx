@@ -1,12 +1,14 @@
 // Copyright (C) 2021 Intel Corporation
 //
 // SPDX-License-Identifier: MIT
+import { Route, Router} from 'react-router';
 import React from 'react';
+import Menu from 'antd/lib/menu';
 import './styles.scss';
 import { withRouter } from 'react-router-dom';
-
 import Input from 'antd/lib/input';
 import DetectronOptionsContainer from 'containers/detectron-page/detectron-options';
+import ExportSubmenu from '../actions-menu/export-submenu';
 
 import { Row } from 'antd/lib/grid';
 import {
@@ -15,14 +17,12 @@ import {
 
 const { Option } = Select;
 
-interface TasksPageProps {
-    tasksFetching: boolean;
-    gettingQuery: TasksQuery;
-    numberOfTasks: number;
-    numberOfVisibleTasks: number;
-    numberOfHiddenTasks: number;
-    onGetTasks: (gettingQuery: TasksQuery) => void;
-    hideEmptyTasks: (hideEmpty: boolean) => void;
+interface Props {
+  onClickMenu: () => void;
+}
+
+export enum Actions {
+  EXPORT_TASK_DATASET = 'export_task_dataset',
 }
 
 function updateQuery(previousQuery: TasksQuery, searchString: string): TasksQuery {
@@ -63,7 +63,7 @@ class TaskPageComponent extends React.PureComponent<Props> {
   }
 
     public componentDidMount(): void {
-        const { gettingQuery, location, onGetTasks } = this.props;
+        const { gettingQuery, location, onGetTasks, exportDataset } = this.props;
         const query = updateQuery(gettingQuery, location.search);
         onGetTasks(query);
     }
@@ -77,6 +77,35 @@ class TaskPageComponent extends React.PureComponent<Props> {
             message.destroy();
             onGetTasks(query);
         }
+    }
+
+    showFile = async (e) => {
+      e.preventDefault()
+      const reader = new FileReader()
+      reader.onload = async (e) => {
+        const text = (e.target.result)
+        console.log(text)
+        this.setState({
+          console: text
+        })
+      };
+      reader.readAsText(e.target.files[0])
+    }
+
+
+    ConsoleClear = () => {
+      const interval = setInterval(() => {
+        fetch('http://localhost:4000/update')
+          .then(response => response.json())
+          .then(data =>{
+            this.setState({
+              console: data.Out,
+            })
+          })
+          .catch((error) => {
+            console.error(error);
+          })
+      }, 5000);
     }
 
     onApiTest = () => {
@@ -94,34 +123,29 @@ class TaskPageComponent extends React.PureComponent<Props> {
     };
 
     onFinishTrain = (values: any) => {
+        this.ConsoleClear()
         console.log('Success', values);
+            fetch('http://localhost:4000/Train', {
+                method: 'POST',
+                body: JSON.stringify(values),
+            })
+          .then(response => response.json())
+          .catch((error) => {
+            console.error(error);
+          });
 
-        fetch('http://localhost:4000/Train', {
-            method: 'POST',
-            body: JSON.stringify(values),
-        })
-        .then(response => response.json())
-        .then(data =>{
-          console.log(data)
-          this.setState({
-            console: this.state.console + "/n" + data.Err + "/n" + data.Out,
-          })
-        })
-        .catch((error) => {
-          console.error(error);
-        });
     };
 
     onFinishTest = (values: any) => {
         console.log('Success', values);
-
+        this.ConsoleClear()
         fetch('http://localhost:4000/Test', {
             method: 'POST',
             body: JSON.stringify(values),
-        }).then((response) => {
-            console.log(response);
-            alert('Finished Tests');
-            return response.json();
+        })
+        .then(response => response.json())
+        .catch((error) => {
+          console.error(error);
         });
     };
 
@@ -129,14 +153,20 @@ class TaskPageComponent extends React.PureComponent<Props> {
         return (
             <>
                 <Row justify='center' align='top'>
-                        <Card title="Console Output" style={{ width: 500, height: 500 }}>
-                          <NewLineText text={this.state.console} />
-                        </Card>
+                  <Button type='primary' onClick={this.ConsoleClear}>
+                    Clear
+                  </Button>
+                  <Card title="Console Output" className="console-output">
+                    <NewLineText text={this.state.console} />
+                  </Card>
                     <Row className='train-test' justify='space-between' align='middle'>
                         <Divider>Training</Divider>
                         <Form id='TrainForm' onFinish={this.onFinishTrain}>
                             <DetectronOptionsContainer />
-                            <Form.Item name='Dataset'>
+                            <Form.Item
+                              name='Dataset'
+                              label='Dataset'
+                            >
                                 <Select placeholder='Select a Dataset'>
                                     <Option value='COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml'>
                                         Mask RCNN 101 FPN
@@ -147,7 +177,7 @@ class TaskPageComponent extends React.PureComponent<Props> {
                             <Form.Item
                                 label='Number of Workers'
                                 name='Workers'
-                                rules={[{ required: true, message: 'Please input your username!' }]}
+                                rules={[{ required: true, message: 'Please input a number of workers' }]}
                             >
                                 <Input />
                             </Form.Item>
@@ -155,7 +185,7 @@ class TaskPageComponent extends React.PureComponent<Props> {
                             <Form.Item
                                 label='IMS per batch'
                                 name='Ims'
-                                rules={[{ required: true, message: 'Please input your username!' }]}
+                                rules={[{ required: true, message: 'Please input an IMS batch!' }]}
                             >
                                 <Input />
                             </Form.Item>
@@ -163,7 +193,7 @@ class TaskPageComponent extends React.PureComponent<Props> {
                             <Form.Item
                                 label='Learning Rate'
                                 name='LearnRate'
-                                rules={[{ required: true, message: 'Please input your username!' }]}
+                                rules={[{ required: true, message: 'Please input a Learning Rate' }]}
                             >
                                 <Input />
                             </Form.Item>
@@ -171,7 +201,7 @@ class TaskPageComponent extends React.PureComponent<Props> {
                             <Form.Item
                                 label='Iterations'
                                 name='Iterations'
-                                rules={[{ required: true, message: 'Please input your username!' }]}
+                                rules={[{ required: true, message: 'Please input a number of iterations' }]}
                             >
                                 <Input />
                             </Form.Item>
@@ -179,7 +209,7 @@ class TaskPageComponent extends React.PureComponent<Props> {
                             <Form.Item
                                 label='Batch size'
                                 name='BatchSize'
-                                rules={[{ required: true, message: 'Please input your username!' }]}
+                                rules={[{ required: true, message: 'Please input a Batch size' }]}
                             >
                                 <Input />
                             </Form.Item>
@@ -187,7 +217,7 @@ class TaskPageComponent extends React.PureComponent<Props> {
                             <Form.Item
                                 label='Number of classifiers'
                                 name='NumClassifiers'
-                                rules={[{ required: true, message: 'Please input your username!' }]}
+                                rules={[{ required: true, message: 'Please input a number of classifiers' }]}
                             >
                                 <Input />
                             </Form.Item>
@@ -206,12 +236,17 @@ class TaskPageComponent extends React.PureComponent<Props> {
 
                     <Row className='train-test' justify='space-between' align='middle'>
                         <Divider>Testing</Divider>
-
                         <Form onFinish={this.onFinishTest}>
-                            <Form.Item name='Task'>
+                            <Form.Item
+                              name='Task'
+                              style={{margin: "0"}}
+                            >
                                 <DetectronOptionsContainer />
                             </Form.Item>
-                            <Form.Item name='Dataset'>
+                            <Form.Item
+                              name='Dataset'
+                              label='Dataset'
+                            >
                                 <Select placeholder='Select a Dataset'>
                                     <Option value='COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml'>
                                         Mask RCNN R 101 FPN

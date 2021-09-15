@@ -23,6 +23,7 @@ import CreateTaskPageContainer from 'containers/create-task-page/create-task-pag
 import TaskPageContainer from 'containers/task-page/task-page';
 
 import DetectronPageContainer from 'containers/detectron-page/detectron-page';
+import KmeansPageContainer from 'containers/kmeans-page/kmeans-page'
 
 import ModelsPageContainer from 'containers/models-page/models-page';
 import AnnotationPageContainer from 'containers/annotation-page/annotation-page';
@@ -313,6 +314,7 @@ class CVATApplication extends React.PureComponent<CVATAppProps & RouteComponentP
                                 <GlobalHotKeys keyMap={subKeyMap} handlers={handlers}>
                                     <Switch>
                                         <Route exact path='/detectron' component={DetectronPageContainer} />
+                                        <Route exact path='/kmeans' component={KmeansPageContainer} />
                                         <Route exact path='/projects' component={ProjectsPageComponent} />
                                         <Route exact path='/projects/create' component={CreateProjectPageComponent} />
                                         <Route exact path='/projects/:id' component={ProjectPageComponent} />

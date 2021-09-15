@@ -1,0 +1,500 @@
+<html>
+  <head>
+    <title>Kmeans Annotator</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <div class="">
+      <img id="original"src="">
+      <img id="ann" src="">
+      <div class="text-center">
+        <button type="button" class="btn btn-primary" id="PicColor">Pick Colours</button>
+        <button type="button" class="btn btn-secondary" id="DrawRect">Rectangle</button>
+        <button type="button" class="btn btn-secondary" id="DrawColor">Draw</button>
+        <button type="button" class="btn btn-info" id="ClrCnvs">Clear Canvas</button>
+        <button type="button" class="btn btn-Success" id="SavePng">Export as png</button>
+      </div>
+
+        <label>Green Classified Images</label>
+        <select name="Green" id="GrnImgs">
+        </select>
+        <button type="button" class="btn btn-info" id="BtnLoadGrn" >Load green image</button>
+        <br>
+
+        <label>Classified Images</label>
+        <select width="100px" name="Classified" id="ClssImgs">
+        </select>
+        <button type="button" class="btn btn-info" id="BtnLoadCls">Load classified image</button>
+
+      <div class="text-center">
+        <label>Opacity</label>
+        <input class="form-control-range" id="OpacRange" type="range" min="0" max="100" value="0">
+      </div>
+
+        <br>
+
+      <div class="d-flex justify-content-around">
+        <div>
+          </canvas>
+          <h2>Merge Classes</h2>
+          <div class="d-flex justify-content-start">
+            <select name="classes" id="classes">
+              <option value="0">null</option>
+              <option value="1">weed</option>
+              <option value="2">crop</option>
+            </select>
+            <button type="button" class="btn btn-info" id="MergeBack">Merge class</button>
+            <button type="button" class="btn btn-info" id="MergeNoise">Remove Noise</button>
+          </div>
+
+          <button type="button" class="btn btn-warning" id="ClrClass">Clear Classes</button>
+
+          <div class=ColClass"">
+          </div>
+          <p>Null:</p>
+          </canvas>
+            <div id="NullDiv">
+            </div>
+          <p>Weed:</p>
+            <div id="WeedDiv">
+            </div>
+          <p>Crop:</p>
+          <div id="CropDiv">
+          </div>
+          <p>Unclassed:</p>
+          <div id="UnclassDiv">
+          </div>
+        </div>
+
+        <div class="wrapper">
+          <canvas id="FinalCanvas" width="1280" height="720" style="border: 1px solid #000000;">
+          </canvas>
+          <canvas id="myImg" width="1280" height="720" style="border: 1px solid #000000;">
+          </canvas>
+          <canvas id="myDraw" width="1280" height="720" style="border: 1px solid #000000;">
+          </canvas>
+          <canvas id="myCanvas" width="1280" height="720" style="border: 1px solid #000000;">
+          </canvas>
+          <canvas id="TempCanvas" width="1280" height="720" style="border: 1px solid #000000;">
+          </canvas>
+          <canvas id="myOrgImg" width="1280" height="720" style="border: 1px solid #000000;">
+          </canvas>
+
+        </div>
+      </div>
+
+    </div>
+
+    <script>
+      var classes = [];
+      const imgs = [];
+
+      fetchMe();
+
+      window.addEventListener('DOMContentLoaded', async function() {
+        fetchMe();
+      });
+
+      async function fetchMe() {
+        await fetch('http://localhost:4000/ProcessImage')
+          .then(response => response.json())
+          .then(data => {
+            for (var i in data.Name) {
+              imgs.push(data.Name[i])
+            }
+            ListImages(imgs);
+            Based(imgs);
+          });
+      }
+
+      function ListImages(imgs) {
+        var GrnImgs = document.getElementById("GrnImgs");
+        var ClssImgs = document.getElementById("ClssImgs");
+
+        for (var i = 0; i < imgs.length; i++) {
+          GrnImgs.innerHTML += "\n<option value=" + i +">" + imgs[i] + "</option>";
+          ClssImgs.innerHTML += "\n<option value=" + i +">" + imgs[i] + "</option>";
+        }
+      }
+
+      function Based(imgs) {
+
+        /*
+        -----------------------------------
+        Canvas Id's
+        -----------------------------------
+        */
+
+        var TempCanvas = document.getElementById("TempCanvas");
+        var TempCtx = TempCanvas.getContext("2d");
+
+        var c = document.getElementById("myCanvas");
+        var ctx = c.getContext("2d");
+
+        var bck = document.getElementById("myImg");
+        var BckCtx = bck.getContext("2d");
+
+        var DrawCanvas = document.getElementById("myDraw");
+        var DrawCtx = DrawCanvas.getContext("2d");
+
+        var org = document.getElementById("myOrgImg");
+        var OrgCtx = org.getContext("2d");
+
+        var FinalCanvas = document.getElementById("FinalCanvas");
+        var FinalCtx = FinalCanvas.getContext("2d");
+
+        var img = document.getElementById("ann");
+
+        var inc = 0;
+        var drag = false;
+        var EnableDraw = false;
+        var EnablePic = true;
+        var rect = {};
+
+        var mrge = document.getElementById("MergeBack");
+
+        var ChngImg = document.getElementById("NxtImg");
+
+        var DrawRect = document.getElementById("DrawRect");
+        EnableRect = false
+
+        var Oimg = document.getElementById("original");
+        var OrgID = document.getElementById("OrgImgBtn");
+
+        Oimg.src = '/static/original/' + imgs[1];
+        OrgCtx.globalAlpha = 0;
+        OrgCtx.drawImage(Oimg, 0, 0, Oimg.width, Oimg.height, 0, 0, org.width, org.height);
+
+        var InRange = document.getElementById("OpacRange");
+        InRange.addEventListener("input", function(e) {
+          OrgCtx.globalAlpha = InRange.value / 100;
+
+          OrgCtx.clearRect(0, 0, org.width, org.height);
+          OrgCtx.drawImage(Oimg, 0, 0, Oimg.width, Oimg.height, 0, 0, org.width, org.height);
+        });
+
+
+        /*
+        ------------------------------------
+        Buttons for editing images
+        ------------------------------------
+        */
+        DrawRect.addEventListener("click", function(e) {
+          EnableRect = true;
+          EnableDraw = false;
+          EnablePic = false;
+          DrawButton.className = "btn btn-secondary";
+          DrawRect.className = "btn btn-primary";
+          PicButton.className = "btn btn-secondary";
+        });
+
+        var ClrButton = document.getElementById("ClrCnvs");
+
+        ClrButton.addEventListener("click", function(e) {
+        ctx.clearRect(0,0, c.width, c.height);
+        DrawCtx.clearRect(0,0, c.width, c.height);
+        });
+
+        var PicButton = document.getElementById("PicColor");
+        PicButton.addEventListener("click", function(e) {
+          EnableRect = false;
+          EnableDraw = false;
+          EnablePic = true;
+          DrawButton.className = "btn btn-secondary";
+          DrawRect.className = "btn btn-secondary";
+          PicButton.className = "btn btn-primary";
+        });
+
+        var DrawButton = document.getElementById("DrawColor");
+        DrawButton.addEventListener("click", function(e) {
+          EnableRect = false;
+          EnableDraw = true;
+          EnablePic = false;
+          DrawButton.className = "btn btn-primary";
+          DrawRect.className = "btn btn-secondary";
+          PicButton.className = "btn btn-secondary";
+        });
+
+
+        var SavePng = document.getElementById("SavePng");
+        SavePng.addEventListener("click", function(e) {
+          e.stopPropagation();
+          e.preventDefault();
+          FinalCtx.drawImage(bck, 0, 0);
+          FinalCtx.drawImage(DrawCanvas, 0, 0);
+          FinalCtx.drawImage(c, 0, 0);
+
+          //console.log(FinalCanvas.toDataURL("image/png").replace("data:image/png;base64", "data:image/png;name=MaskJson;base64"));
+
+          fetch('http://localhost:4000/json', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(FinalCanvas.toDataURL("image/png"))
+          })
+          .then(response => response.json())
+          .then(data => {
+            console.log("done");
+          });
+
+
+          const link = document.createElement('a');
+          link.download = document.getElementById("ann").src;
+          link.href = FinalCanvas.toDataURL();
+          link.click();
+          link.delete;
+
+        });
+
+
+        /*
+        ------------------------------------
+        ------------------------------------
+        */
+
+
+        document.getElementById("ann").src = '/static/process/g-' + imgs[1];
+        img.onload = function() {
+          BckCtx.drawImage(img, 0, 0, img.width, img.height, 0, 0, c.width, c.height);
+        }
+
+        var ClsBtn = document.getElementById("BtnLoadCls");
+        ClsBtn.addEventListener("click", function(e) {
+          var YourOption = document.getElementById("ClssImgs");
+          var sel = YourOption.options[ YourOption.selectedIndex ].innerHTML;
+
+
+          Oimg.src = '/static/original/' + sel;
+          document.getElementById("ann").src = '/static/process/c-' + sel;
+          var img = document.getElementById("ann");
+
+          img.onload = function() {
+            BckCtx.drawImage(img, 0, 0, img.width, img.height, 0, 0, c.width, c.height);
+          }
+          Oimg.onload = function() {
+            OrgCtx.drawImage(Oimg, 0, 0, Oimg.width, Oimg.height, 0, 0, org.width, org.height);
+          }
+        })
+
+        var GrnBtn = document.getElementById("BtnLoadGrn");
+        GrnBtn.addEventListener("click", function(e) {
+          var YourOption = document.getElementById("GrnImgs");
+          var sel = YourOption.options[ YourOption.selectedIndex ].innerHTML;
+
+          Oimg.src = '/static/original/' + sel;
+          document.getElementById("ann").src = '/static/process/g-' + sel;
+          var img = document.getElementById("ann");
+
+          img.onload = function() {
+            BckCtx.drawImage(img, 0, 0, img.width, img.height, 0, 0, c.width, c.height);
+          }
+          Oimg.onload = function() {
+            OrgCtx.drawImage(Oimg, 0, 0, Oimg.width, Oimg.height, 0, 0, org.width, org.height);
+          }
+        })
+
+        org.addEventListener('mousedown', function(e) {
+          e.stopPropagation();
+          e.preventDefault();
+          rect.startX = e.clientX - offsetX;
+          rect.startY = e.clientY - offsetY;
+          drag = true;
+
+        });
+
+        org.addEventListener('mouseup', function(e) {
+
+          e.stopPropagation();
+          e.preventDefault();
+          drag = false;
+
+          if (EnableRect == true) {
+            TempCtx.clearRect(0, 0,c.width,c.height);
+            ctx.globalAlpha = 0.2;
+            ctx.fillRect(rect.startX, rect.startY, rect.w, rect.h);
+          }
+        });
+
+        var cRect = c.getBoundingClientRect();
+        var offsetX = cRect.left;
+        var offsetY = cRect.top;
+
+        org.addEventListener("mousemove", function(e) {
+          e.stopPropagation();
+          e.preventDefault();
+          var canvasX = Math.round(e.clientX - offsetX);
+          var canvasY = Math.round(e.clientY - offsetY);
+
+          if (drag == true) {
+            if (EnableRect == true) {
+              rect.w = canvasX - rect.startX;
+              rect.h = canvasY - rect.startY;
+
+              draw();
+            } else if (EnableDraw == true) {
+              var YourOption = document.getElementById("classes");
+              var sel = YourOption.options[ YourOption.selectedIndex ].value;
+
+              col = 'rgb(' + classes[sel][0][0] + ', ' + classes[sel][0][1] + ', ' + classes[sel][0][2] + ')';
+
+              DrawCtx.beginPath();
+              DrawCtx.arc(canvasX, canvasY, 10, 0, 2 * Math.PI, false);
+              DrawCtx.fillStyle = col
+              DrawCtx.fill();
+              DrawCtx.lineWidth = 0;
+              DrawCtx.strokeStyle = col;
+              DrawCtx.stroke();
+            }
+          }
+          //ctx.clearRect(0, 0, c.width, c.height);
+          //console.log("X: "+canvasX+", Y: "+canvasY);
+          //ctx.fillText("X: "+canvasX+", Y: "+canvasY, 10, 20);
+          //find(canvasX, canvasY)
+        });
+
+        function draw() {
+          var YourOption = document.getElementById("classes");
+          var sel = YourOption.options[ YourOption.selectedIndex ].value;
+
+          if (sel == 0) {
+            ctx.fillStyle = "#000000";
+          } else if (sel == 1) {
+            ctx.fillStyle = "#FF0000";
+          } else if (sel == 2) {
+            ctx.fillStyle = "#4bf542";
+          }
+
+          TempCtx.clearRect(0, 0,c.width,c.height);
+          TempCtx.beginPath();
+          TempCtx.globalAlpha = 0.5;
+          TempCtx.fillRect(rect.startX, rect.startY, rect.w, rect.h);
+          TempCtx.stroke();
+          //console.log(rect)
+        }
+
+        org.addEventListener("click", function(e) {
+          e.stopPropagation();
+          e.preventDefault();
+          var cRect = c.getBoundingClientRect();
+          var canvasX = Math.round(e.clientX - cRect.left);
+          var canvasY = Math.round(e.clientY - cRect.top);
+
+          if (EnablePic == true) {
+            var YourOption = document.getElementById("classes");
+            var sel = YourOption.options[ YourOption.selectedIndex ].value
+            //console.log(sel);
+
+            find(canvasX, canvasY, sel);
+          }
+        });
+
+        function find(x, y, sel, d) {
+          var ImageData = BckCtx.getImageData(x, y, 1, 1);
+
+          red = ImageData.data[0];
+
+          green = ImageData.data[1];
+
+          blue = ImageData.data[2];
+
+          col = red + " " + green + " " + blue
+
+        if (classes[sel] == undefined) {
+            classes[sel] = []
+        } else {
+          classes[sel].push([red, green, blue]);
+        }
+
+          if (sel == 0) {
+            document.getElementById('NullDiv').innerHTML += "\n<li>" + col + "</li>";
+          } else if (sel == 1) {
+            document.getElementById('WeedDiv').innerHTML += "\n<li>" + col + "</li>";
+          } else if (sel == 2) {
+            document.getElementById('CropDiv').innerHTML += "\n<li>" + col + "</li>";
+          }
+          console.log(classes);
+        }
+
+        var ClrClass = document.getElementById("ClrClass");
+        ClrClass.addEventListener("click", function(e) {
+          classes = [];
+
+          document.getElementById('NullDiv').innerHTML = null;
+          document.getElementById('WeedDiv').innerHTML = null;
+          document.getElementById('CropDiv').innerHTML = null;
+        });
+
+        var Noise = document.getElementById("MergeNoise");
+        Noise.addEventListener("click", function(e) {
+          var ImageData = BckCtx.getImageData(0, 0, bck.width, bck.height);
+
+          RemoveNoise(ImageData.data);
+
+          BckCtx.putImageData(ImageData, 0, 0);
+        });
+
+        mrge.addEventListener("click", function(e) {
+          e.stopPropagation();
+          e.preventDefault();
+          var ImageData = BckCtx.getImageData(0, 0, bck.width, bck.height);
+
+          var YourOption = document.getElementById("classes");
+          var sel = YourOption.options[ YourOption.selectedIndex ].value;
+
+          MergeClasses(ImageData.data, sel);
+
+          BckCtx.putImageData(ImageData, 0, 0);
+        });
+
+        function MergeClasses(data, sel) {
+          for (var i = 0; i < data.length; i+=4) {
+            for (var y = 0; y < classes[sel].length; y++) {
+              //console.log(y);
+              if (classes[sel][y][0] == data[i] && classes[sel][y][1] == data[i+1] && classes[sel][y][2] == data[i+2])  {
+                data[i] = classes[sel][0][0];
+                data[i+1] = classes[sel][0][1];
+                data[i+2] = classes[sel][0][2];
+                break;
+              } else {
+
+              }
+            }
+
+          }
+        };
+
+        function RemoveNoise(data) {
+          var Lst = 0
+          if (typeof classes[1] === 'undefined') {
+            console.log("true")
+            classes.splice(1, 1, [0, 0, 0]);
+          } else if (typeof classes[0] === 'undefined') {
+            console.log("true")
+            classes.splice(0, 1, [0, 0, 0]);
+          } else if (typeof classes[2] === 'undefined') {
+            console.log("true")
+            classes.splice(2, 1, [0, 0, 0]);
+          }
+          for (var i = 0; i < data.length; i+=4) {
+            if (classes[0][0][0] == data[i] && classes[0][0][1] == data[i+1] && classes[0][0][2] == data[i+2]) {
+              Lst = 0
+            } else if (classes[1][0][0] == data[i] && classes[1][0][1] == data[i+1] && classes[1][0][2] == data[i+2]) {
+              Lst = 1
+            } else if (classes[2][0][0] == data[i] && classes[2][0][1] == data[i+1] && classes[2][0][2] == data[i+2]) {
+              Lst = 2
+            } else {
+              data[i] = classes[Lst][0][0];
+              data[i+1] = classes[Lst][0][1];
+              data[i+2] = classes[Lst][0][2];
+            }
+          }
+        };
+
+    }
+
+    </script>
+  </body>
+</html>

@@ -14,6 +14,9 @@ import RotateControl, { Props as RotateControlProps } from './rotate-control';
 import CursorControl, { Props as CursorControlProps } from './cursor-control';
 import MoveControl, { Props as MoveControlProps } from './move-control';
 import FitControl, { Props as FitControlProps } from './fit-control';
+
+import KmeansControl, { Props as KmeansControlProps} from './kmeans-control';
+
 import ResizeControl, { Props as ResizeControlProps } from './resize-control';
 import ToolsControl from './tools-control';
 import OpenCVControl from './opencv-control';
@@ -50,6 +53,9 @@ const ObservedCursorControl = ControlVisibilityObserver<CursorControlProps>(Curs
 const ObservedMoveControl = ControlVisibilityObserver<MoveControlProps>(MoveControl);
 const ObservedRotateControl = ControlVisibilityObserver<RotateControlProps>(RotateControl);
 const ObservedFitControl = ControlVisibilityObserver<FitControlProps>(FitControl);
+
+const ObservedKmeansControl = ControlVisibilityObserver<KmeansControlProps>(KmeansControl);
+
 const ObservedResizeControl = ControlVisibilityObserver<ResizeControlProps>(ResizeControl);
 const ObservedToolsControl = ControlVisibilityObserver(ToolsControl);
 const ObservedOpenCVControl = ControlVisibilityObserver(OpenCVControl);
@@ -201,6 +207,11 @@ export default function ControlsSideBarComponent(props: Props): JSX.Element {
     return (
         <Layout.Sider className='cvat-canvas-controls-sidebar' theme='light' width={44}>
             <GlobalHotKeys keyMap={subKeyMap} handlers={handlers} />
+
+            <ObservedKmeansControl canvasInstance={canvasInstance} />
+
+            <hr />
+
             <ObservedCursorControl
                 cursorShortkey={normalizedKeyMap.CANCEL}
                 canvasInstance={canvasInstance}

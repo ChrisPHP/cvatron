@@ -6,9 +6,9 @@ import { connect } from 'react-redux';
 
 import { Task, TasksQuery, CombinedState } from 'reducers/interfaces';
 
-import DetectronPageComponent from 'components/detectron-page/detectron-page';
+import DetectronPageComponent, { Actions } from 'components/detectron-page/detectron-page';
 
-import { getTasksAsync, hideEmptyTasks } from 'actions/tasks-actions';
+import { exportDatasetAsync, getTasksAsync, hideEmptyTasks } from 'actions/tasks-actions';
 
 interface StateToProps {
     tasksFetching: boolean;
@@ -16,6 +16,10 @@ interface StateToProps {
     numberOfTasks: number;
     numberOfVisibleTasks: number;
     numberOfHiddenTasks: number;
+}
+
+interface DispatchToProps {
+    exportDataset: (taskInstance: any, exporter: any) => void;
 }
 
 function mapStateToProps(state: CombinedState): StateToProps {
@@ -38,6 +42,9 @@ function mapDispatchToProps(dispatch: any): DispatchToProps {
         },
         hideEmptyTasks: (hideEmpty: boolean): void => {
             dispatch(hideEmptyTasks(hideEmpty));
+        },
+        exportDataset: (taskInstance: any, exporter: any): void => {
+            dispatch(exportDatasetAsync(taskInstance, exporter));
         },
     };
 }

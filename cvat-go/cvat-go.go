@@ -11,12 +11,27 @@ import (
   "io"
   "path/filepath"
   "mime/multipart"
+  "bufio"
+  "bytes"
+  "strings"
 
+  "github.com/vincent-petithory/dataurl"
   "github.com/gorilla/mux"
+  "github.com/acarl005/stripansi"
 )
 type Res struct {
   Out string
   Err string
+}
+
+type Files struct {
+  Name []string
+}
+
+type Kmeans struct {
+  Ref []string
+  Cls []string
+  Grn []string
 }
 
 type Install struct {
@@ -47,12 +62,19 @@ type Config struct {
 }
 
 func setupRoutes() {
-  router := mux.NewRouter().StrictSlash(true)
+  router := NewRouter()
   router.HandleFunc("/", Index)
   router.HandleFunc("/Api", ReponseTest)
   router.HandleFunc("/Train", WriteTrain)
   router.HandleFunc("/Test", WriteTest)
   router.HandleFunc("/upload", UploadImages)
+  router.HandleFunc("/update", UpdateClient)
+  router.HandleFunc("/Kmeans", KmeansImages)
+  router.HandleFunc("/KmeansRun", KmeansRun)
+  router.HandleFunc("/KmeansPre", KmeansPreProcess)
+  router.HandleFunc("/KmeansReflect", KmeansReflect)
+  router.HandleFunc("/ProcessImage", ProcessImageNames)
+  router.HandleFunc("/json", JsonImage)
   log.Fatal(http.ListenAndServe(":4000", router))
 }
 
@@ -60,6 +82,262 @@ func main() {
   setupRoutes()
   fmt.Println("Ready To Serve")
 }
+
+//=====================================
+//Kmeans and image annotation ColorMode
+//=====================================
+
+//Get image names
+func ProcessImageNames(w http.ResponseWriter, r *http.Request) {
+  w.Header().Set("Content-Type", "application/json")
+
+  files := GetFileContents("static/original/")
+
+  elems := len(files)
+
+  var ins Files
+
+  left := make([]string, elems)
+
+  for i := range files {
+    left[i] = files[i]
+    fmt.Println(left[i])
+  }
+
+  ins = Files{Name: left}
+
+  byteArray, err := json.Marshal(ins)
+  if err != nil {
+    fmt.Println(err)
+  }
+  w.Write(byteArray)
+
+  return
+}
+
+func JsonImage(w http.ResponseWriter, r *http.Request) {
+  buf := new(bytes.Buffer)
+  buf.ReadFrom(r.Body)
+  url := buf.String()
+  url = strings.Replace(url, "data:image/png;base64", "data:image/png;name=maskjson;base64", 1)
+  url = strings.Trim(url, "\"");
+  fmt.Println(url)
+  dataURL, err := dataurl.DecodeString(url)
+  defer r.Body.Close()
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusBadRequest)
+    fmt.Println(err)
+    return
+  }
+  if dataURL.ContentType() == "image/png" {
+    ioutil.WriteFile("./static/mask/image.png", dataURL.Data, 0644)
+  } else {
+    http.Error(w, "not a png", http.StatusBadRequest)
+  }
+}
+
+
+func KmeansPreProcess(w http.ResponseWriter, r *http.Request) {
+
+  files := GetFileContents("static/mask/")
+
+  if (len(files) != 0) {
+    fmt.Println("not empty")
+    KmeansRun(w, r)
+  } else {
+
+
+  files = GetFileContents("static/")
+
+  for i := range files {
+    cmd := exec.Command("python3" , "kmeans/intrinsic/decompose.py", files[i], "-q")
+    _, err := cmd.Output()
+    if err != nil {
+      fmt.Println(err)
+    }
+  }
+
+    KmeansRun(w, r)
+  }
+}
+
+func KmeansImages(w http.ResponseWriter, r *http.Request) {
+  w.Header().Set("Content-Type", "application/json")
+
+  fmt.Println("Success")
+
+  files := GetFileContents("static/original/")
+
+  for i := range files {
+    err := os.Remove("static/original/" +  files[i])
+    if err != nil {
+      fmt.Println(err)
+    }
+  }
+
+  GetTaskImages(w, r, "Kmeans")
+
+  files = GetFileContents("static/original/")
+
+  elems := len(files)
+
+  var ins Files
+
+  left := make([]string, elems)
+
+  for i := range files {
+    left[i] = files[i]
+    fmt.Println(left[i])
+  }
+
+  ins = Files{Name: left}
+
+  byteArray, err := json.Marshal(ins)
+  if err != nil {
+    fmt.Println(err)
+  }
+  w.Write(byteArray)
+
+  return
+}
+
+//Kmeans processing
+
+func KmeansReflect(w http.ResponseWriter, r *http.Request) {
+  w.Header().Set("Content-Type", "application/json")
+
+  files := GetFileContents("static/original/")
+  mem := GetFileContents("static/reflect/")
+
+  for i := range mem {
+    err := os.Remove("static/reflect/" +  mem[i])
+    if err != nil {
+      fmt.Println(err)
+    }
+  }
+
+  elems := len(files)
+  var ins Files
+  left := make([]string, elems)
+
+  for i := range files {
+    cmd := exec.Command("python3", "kmeans/intrinsic/decompose.py", files[i])
+    left[i] =  "r-" + files[i]
+    _, err := cmd.Output()
+    if err != nil {
+      fmt.Println(err)
+    }
+  }
+
+  ins = Files{Name: left}
+
+  byteArray, err := json.Marshal(ins)
+  if err != nil {
+    fmt.Println(err)
+  }
+
+  w.Write(byteArray)
+}
+
+func KmeansRun(w http.ResponseWriter, r *http.Request) {
+  w.Header().Set("Content-Type", "application/json")
+
+  var c Config
+
+  err := json.NewDecoder(r.Body).Decode(&c)
+  if err != nil {
+    fmt.Println(err)
+  }
+
+  rem := GetFileContents("static/process/")
+
+  for i := range rem {
+    err := os.Remove("static/process/" +  rem[i])
+    if err != nil {
+      fmt.Println(err)
+    }
+  }
+
+
+  files := GetFileContents("static/original/")
+
+  fmt.Println(files)
+
+  for i := range files {
+    //cmd := exec.Command("python3" , "kmeans/kmeans.py", file.Name())
+    //cmd := exec.Command("python3" , "kmeans/intrinsic/decompose.py", file.Name(), "-q")
+    //_, err = cmd.Output()
+
+    cmd := exec.Command("python3" , "kmeans/preprocess.py", files[i], c.Task)
+    cmd.Stdout = os.Stdout
+  	cmd.Stderr = os.Stderr
+    err := cmd.Run()
+    if err != nil {
+      fmt.Println(err)
+    }
+  }
+
+  elems := len(files)
+  var ins Kmeans
+  left_r := make([]string, elems)
+  left_c := make([]string, elems)
+  left_g := make([]string, elems)
+
+  for i := range files {
+    if (files[i] != "process") {
+      //cmd := exec.Command("python3" , "kmeans/intrinsic/decompose.py", file.Name(), "-q")
+      //_, err = cmd.Output()
+      left_r[i] = files[i]
+      left_c[i] = "c-" + files[i]
+      left_g[i] = "g-" + files[i]
+    }
+  }
+
+  ins = Kmeans{Ref: left_r,
+              Cls: left_c,
+              Grn: left_g,}
+
+  byteArray, err := json.Marshal(ins)
+  if err != nil {
+    fmt.Println(err)
+  }
+
+  w.Write(byteArray)
+}
+
+//===================================
+// Kmeans ends
+//===================================
+
+
+func GetFileContents(dir string) ([]string) {
+
+  files, err := ioutil.ReadDir(dir)
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  elems := len(files)
+  names := make([]string, elems)
+
+  for i, file := range files {
+    names[i] = file.Name()
+  }
+  return names
+}
+
+func NewRouter() *mux.Router {
+  router := mux.NewRouter().StrictSlash(true)
+
+  staticDir := "/static/"
+
+  router.
+    PathPrefix(staticDir).
+    Handler(http.StripPrefix(staticDir, http.FileServer(http.Dir("."+staticDir))))
+
+  return router
+}
+
 
 func ReponseTest(w http.ResponseWriter, r *http.Request) {
   res := Res{"Monke", "test"}
@@ -71,6 +349,24 @@ func ReponseTest(w http.ResponseWriter, r *http.Request) {
 
   w.Header().Set("Content-Type", "application/json")
   w.Write(js)
+}
+
+func UpdateClient(w http.ResponseWriter, r *http.Request) {
+  content, err := ioutil.ReadFile("data.txt")
+
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  ins := Res{Out: string(content)}
+
+  byteArray, err := json.Marshal(ins)
+  if err != nil {
+    fmt.Println(err)
+  }
+  w.Write(byteArray)
+
+  return
 }
 
 func Index(w http.ResponseWriter, r *http.Request) {
@@ -100,77 +396,6 @@ func Index(w http.ResponseWriter, r *http.Request) {
 
   json.NewEncoder(w).Encode(ins)
   fmt.Println(string(byteArray))
-}
-
-func LogFile(wr error) {
-  f, err := os.OpenFile("log.txt", os.O_RDWR | os.O_CREATE, 0666)
-  if err != nil {
-    log.Fatal("error opening file", err)
-  }
-  defer f.Close()
-
-  log.SetOutput(f)
-  log.Println(wr)
-}
-
-func ReadFile() (out string) {
-  content, err := ioutil.ReadFile("log.txt")
-  if err != nil {
-    log.Fatal(err)
-  }
-
-  return string(content)
-}
-
-func TrainHandler(w http.ResponseWriter, r *http.Request) {
-
-  cmd := exec.Command("python", "detectron/vgw_all_train.py")
-  out, err := cmd.Output()
-  fmt.Println(string(out))
-  if err != nil {
-    fmt.Println(err)
-    LogFile(err)
-
-    fin := Res{Err: ReadFile(), Out: string(out)}
-    byteArray, err := json.Marshal(fin)
-    if err != nil {
-      fmt.Println(err)
-    }
-    w.Write(byteArray)
-    return
-  }
-  //cmd.Stdout = os.Stdout
-  //cmd.Stderr = os.Stderr
-  //fmt.Println(cmd.Run())
-  //var a [2]string
-  //x := cmd.Run()
-  //fmt.Println(x.Error())
-  //ConsoleChecker(w, r, x)
-
-  fin := Res{Out: string(out)}
-  byteArray, err := json.Marshal(fin)
-  if err != nil {
-    fmt.Println(err)
-  }
-  w.Write(byteArray)
-}
-
-func TestHandler(w http.ResponseWriter, r *http.Request) {
-  cmd := exec.Command("python", "detectron/vgw_all_test.py")
-  cmd.Stdout = os.Stdout
-  cmd.Stderr = os.Stderr
-  fmt.Println(cmd.Run())
-
-  fin := Install{Result: "finished"}
-  byteArray, err := json.Marshal(fin)
-  if err != nil {
-    fmt.Println(err)
-  }
-
-  fmt.Println(string(byteArray))
-  json.NewEncoder(w).Encode(fin)
-
-  return
 }
 
 func GetTaskImages(w http.ResponseWriter, r *http.Request, FormName string) (Config) {
@@ -208,27 +433,124 @@ func CopyFileOver(file string, Name string, FormName string) {
     }
     defer sourceFile.Close()
 
-    newFile, err := os.Create("detectron/" + FormName + "/images/" + Name)
-    if err != nil {
-      fmt.Println(err)
-    }
-    defer newFile.Close()
+    if (FormName == "Kmeans") {
+      newFile, err := os.Create("static/original/" + Name)
 
-    _, err = io.Copy(newFile, sourceFile)
-    if err != nil {
-      fmt.Println(err)
+      if err != nil {
+        fmt.Println(err)
+      }
+      defer newFile.Close()
+
+      _, err = io.Copy(newFile, sourceFile)
+
+      if err != nil {
+        fmt.Println(err)
+      }
+
+    } else {
+      newFile, err := os.Create("detectron/" + FormName + "/images/" + Name)
+
+      if err != nil {
+        fmt.Println(err)
+      }
+      defer newFile.Close()
+
+      _, err = io.Copy(newFile, sourceFile)
+
+      if err != nil {
+        fmt.Println(err)
+      }
     }
+
+
+}
+
+func LogFile(wr error) {
+  f, err := os.OpenFile("log.txt", os.O_RDWR | os.O_CREATE, 0666)
+  if err != nil {
+    log.Fatal("error opening file", err)
+  }
+  defer f.Close()
+
+  log.SetOutput(f)
+  log.Println(wr)
+}
+
+func ReadFile() (out string) {
+  content, err := ioutil.ReadFile("log.txt")
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  return string(content)
+}
+
+func TrainHandler(w http.ResponseWriter, r *http.Request) {
+
+  cmd := exec.Command("python3", "detectron/vgw_all_train.py")
+  var outb bytes.Buffer
+  //fmt.Println(errb)
+  cmd.Stdout = &outb
+  stderr, _ := cmd.StdoutPipe()
+  err := cmd.Start()
+  f, err := os.Create("data.txt")
+
+  if err != nil {
+        log.Fatal(err)
+  }
+
+  defer f.Close()
+
+  scanner := bufio.NewScanner(stderr)
+  scanner.Split(bufio.ScanLines)
+  for scanner.Scan() {
+    m := scanner.Text()
+    CleanMsg := stripansi.Strip(m)
+    _, err = f.WriteString(CleanMsg)
+    _, err = f.WriteString("\n")
+    fmt.Println(CleanMsg)
+  }
+  cmd.Wait()
+  //var a [2]string
+  //x := cmd.Run()
+  //fmt.Println(x.Error())
+  //ConsoleChecker(w, r, x)
+  return
+}
+
+func TestHandler(w http.ResponseWriter, r *http.Request) {
+  cmd := exec.Command("python3", "detectron/vgw_all_test.py")
+  //out, err := cmd.Output()
+
+  stderr, _ := cmd.StdoutPipe()
+  err := cmd.Start()
+
+  f, err := os.Create("data.txt")
+
+  if err != nil {
+        log.Fatal(err)
+  }
+
+  defer f.Close()
+
+  scanner := bufio.NewScanner(stderr)
+  scanner.Split(bufio.ScanLines)
+  for scanner.Scan() {
+    m := scanner.Text()
+    CleanMsg := stripansi.Strip(m)
+    _, err = f.WriteString(CleanMsg)
+    _, err = f.WriteString("\n")
+    fmt.Println(CleanMsg)
+  }
+  cmd.Wait()
 }
 
 func WriteTest(w http.ResponseWriter, r *http.Request) {
+  w.Header().Set("Content-Type", "application/json")
   T := GetTaskImages(w, r, "test")
 
-  dir := "output/" + T.Output
+  dir := "./output/" + T.Output
   err := os.Mkdir(dir, 0755 )
-
-  if err != nil {
-    fmt.Println(err)
-  }
 
   f, err := os.Create("detectron/vgw_all_test.py")
 
@@ -275,10 +597,12 @@ func WriteTrain(w http.ResponseWriter, r *http.Request) {
 
   defer f.Close()
 
+  fmt.Println("help");
+
   imps := "import os\nfrom detectron2.data.datasets import register_coco_instances\nfrom detectron2.engine        import DefaultTrainer\nfrom detectron2.config         import get_cfg\nfrom detectron2               import model_zoo\n\n"
 
-  reg := `register_coco_instances("vgw_cos_train", {}, "detectron/train/annotations/annotations/instances_default.json", "detectron/train/images/")` + "\n"
-  reg += `register_coco_instances("vgw_all_test", {}, "detectron/test/annotations/alltest200/output.json", "detectron/test/images_200/")` + "\n\n"
+  reg := `register_coco_instances("vgw_cos_train", {}, "detectron/train/annotations/annotations/instances_default.json", "detectron/train/annotations/images/")` + "\n"
+  reg += `register_coco_instances("vgw_all_test", {}, "detectron/test/annotations/alltest200/output.json", "detectron/test/images/")` + "\n\n"
 
   cfg := `cfg = get_cfg()` + "\n"
   cfg += `cfg.merge_from_file(model_zoo.get_config_file("` + c.Dataset+ `"))` + "\n"
@@ -293,7 +617,7 @@ func WriteTrain(w http.ResponseWriter, r *http.Request) {
   params += `cfg.MODEL.ROI_HEADS.NUM_CLASSES          =` + c.NumClassifiers + "\n"
   params += `cfg.MODEL.WEIGHTS                        = os.path.join(cfg.OUTPUT_DIR,"model_final.pth")` + "\n"
 
-  out := `print(cfg.OUTPUT_DIR)` + "\n"
+  out := `#print(cfg.OUTPUT_DIR)` + "\n"
   out += `os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)` + "\n"
   out += `trainer = DefaultTrainer(cfg)` + "\n"
   out += `trainer.resume_or_load(resume=`+ c.ResumeTrain + `)` + "\n"
