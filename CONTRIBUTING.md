@@ -39,7 +39,7 @@ patches and features.
 
   ```sh
   git clone https://github.com/ChrisPHP/cvatron
-  cd cvat && mkdir logs keys
+  cd cvatron && mkdir logs keys
   python3 -m venv .env
   . .env/bin/activate
   pip install -U pip wheel setuptools
