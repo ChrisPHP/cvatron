@@ -38,7 +38,7 @@ patches and features.
 - Install CVAT on your local host:
 
   ```sh
-  git clone https://github.com/opencv/cvat
+  git clone https://github.com/ChrisPHP/cvatron
   cd cvat && mkdir logs keys
   python3 -m venv .env
   . .env/bin/activate
@@ -85,6 +85,17 @@ patches and features.
   ```sh
   cd .. && source .env/bin/activate && code
   ```
+
+> Running the go server:
+
+- Go into the cvat-go directory in a new terminal. 
+
+```
+cd cvat-go
+go run cvat-go
+```
+
+- the port 4000 needs to be available for the server to open.
 
 - Install following VS Code extensions:
 
