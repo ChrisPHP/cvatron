@@ -35,11 +35,11 @@ pdf2image==1.14.0
 django-rest-auth[with_social]==0.9.5
 cython==0.29.21
 opencv-python-headless==4.4.0.42
-h5py==2.10.0
+h5py==3.1.0
 django-cors-headers==3.5.0
 furl==2.1.0
 av==8.0.2 --no-binary=av
-tensorflow==2.4.1 # Optional requirement of Datumaro
+tensorflow==2.6.0 # Optional requirement of Datumaro
 # The package is used by pyunpack as a command line tool to support multiple
 # archives. Don't use as a python module because it has GPL license.
 patool==1.12
