@@ -51,3 +51,8 @@ open3d==0.11.2
 # of pycocotools and tensorflow 2.4.1
 # when pycocotools is installed by wheel in python 3.8+
 datumaro==0.1.7 --no-binary=datumaro --no-binary=pycocotools
+torch==1.9.1
+kmeans-pytorch==0.3
+mpld3==0.5.5
+torchvision==0.10.1
+numba==0.54.0
