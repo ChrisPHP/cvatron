@@ -65,10 +65,14 @@ patches and features.
   ```
 
 - Install npm packages for UI and start UI debug server (run the following command from CVAT root directory):
+> May need to run 'npm rebuild node-sass' if it says it cannot find scandir.
 
   ```sh
   npm ci && \
   cd cvat-core && npm ci && \
+  cd ../cvat-data && npm install && \
+  cd ../cvat-canvas && npm install && \
+  cd ../cvat-canvas3d && npm install && \
   cd ../cvat-ui && npm ci && npm start
   ```
 
